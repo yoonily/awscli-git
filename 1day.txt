@@ -1,0 +1,14 @@
+brew install —build-from-source python@3.7
+brew install awscli
+npm -install -g aws-cdk
+
+aws configure
+aws ec2 describe-instances
+aws s3 ls
+aws configure list
+aws iam list-users
+aws ec2 describe-vpcs
+aws ec2 describe-security-groups
+aws ec2 create-security-group —group-name my-sg —description “My security group”
+aws ec2 describe-images —output test | sort -k 1
+
