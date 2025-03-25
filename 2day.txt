@@ -1,0 +1,12 @@
+aws ec2 run-instances --image-id ami-12345678 --count 1 --instance-type t2.micro --key-name MyKeyPair
+--security-group-ids sg-12345678
+
+aws ec2 describe-instances
+
+aws ec2 stop-instances --instance-ids i-123456789abcde
+
+aws ec2 start-instances --instance-ids i-12345689abcde
+
+aws ec2 terminae-instances --instance-ids i-123456789abcde
+
+aws ec2 create-key-pair --key-name MyKeyPair --query 'KeyMaterial' --output text > MyKeyPair.pem
