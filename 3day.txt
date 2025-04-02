@@ -1,0 +1,36 @@
+s3api command
+# 버킷 생성하기
+aws s3api create-bucket \
+--bucket cloudaffaire-s3-select-demo \
+--region ap-south-1 \
+--create-bucket-configuration LocationConstraint=ap-south-1
+
+# 버킷의 Region 확인
+$ aws s3api get-bucket-location --bucket [버킷명]
+
+
+# 버킷의 객체를 모두 json으로 조회
+$ aws s3api list-objects-v2 --bucket [버킷명]
+
+
+# 객체의 메타데이터 확인
+$ aws s3api head-object --bucket [버킷명] -key [fileName]
+
+
+# 객체의 태그 조회
+$ aws s3api get-object-tagging --bucket [버킷명] --key [fileName]
+
+
+# 해당 버킷이 버저닝을 사용하는지 체크
+$ aws s3api get-bucket-versioning --bucket [버킷명]
+
+
+# 버킷의 버저닝된 객체 리스트를 출력
+$ aws s3api list-object-versions --bucket [버킷명]
+
+
+# 특정 객체를 다운로드
+# [version id] : 위의 list-object-versions 명령어를 통해 가져온 id
+# [outfileName] : 받은 객체를 어떤 이름으로 저장할지
+$ aws s3api get-object --bucket [버킷명] --key [fileName] --version-id [version id] [outfileName]
+
