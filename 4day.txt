@@ -1,0 +1,9 @@
+aws configure --profile test-user
+aws configure set region us-west-2 --profile
+aws configure get region --profile test-user
+aws configure list
+aws configure list-profiles
+export AWS_DEFAULT_PROFILE=test-user
+source ~/.zshrc
+aws sts get-caller-identity
+aws ec2 describe-instances --filters Name=instance-state-name,Values=running --query "Reservations[*].Instances[*].InstanceId" --output text 
