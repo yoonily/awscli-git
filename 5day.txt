@@ -1,0 +1,3 @@
+aws s3api get-bucket-versioning --bucket
+aws s3api list-object-versions --bucket
+aws s3api get-object --bucket buckettest --key file1 --version-id 3
