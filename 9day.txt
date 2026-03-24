@@ -1,0 +1,4 @@
+aws s3 ls
+aws s3 cp .\photo.jpg s3://photo.jpg
+aws ec2 create-tags --resources i-5203422c --tags key=name, Value=MyInstance
+aws ec2 describe-instances --filters "Name=tag:Name,Values=MyInstance" --output table
