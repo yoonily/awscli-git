@@ -1,0 +1,12 @@
+aws eks list-clusters
+aws eks describe-cluster --name clustername
+aws eks update-kubeconfig --name clustername
+aws eks list-nodegroups --cluster-name clustername
+aws eks describe-nodegroup --cluster-name clustername --nodegroup-name nodegname
+aws eks list-addons --cluster-name clustername
+aws eks list-fargate-profiles --cluster-name clustername
+eksctl get cluster
+eksctl create cluster --name cla --nodes 3 --node-tyep t3.medium
+eksctl scale nodegroup --cluster=cla --name=ndg --nodes=5
+aws sts get-caller-identity
+aws eks list-clusters --region ap-northeast-2 --output json
