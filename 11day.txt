@@ -1,0 +1,14 @@
+aws elbv2 create-load-balancer --name my-alb \
+--subnets subnet-12345 subnet-67890 \
+--security-groups sg-0123456789
+aws elbv2 describe-load-balancers
+aws elbv2 delete-load-balancer
+aws elbv2 create-target-group --name my-targets \
+--protocol http --port 80 --vpc-id vpc-12345 \
+--target-type instance
+aws elbv2 register-targets --target-group-arn to_arn \
+--targets id=i-0123456789 id=i-9876543210
+aws elbv2 create-rule --listenner-arn listner_arn \
+--priority 10 \
+--conditions field=path-pattern, values='/v1/predict' \
+--actios type=forward, targetgrouparn=to_arn
