@@ -1,0 +1,9 @@
+aws ecs list-clusters
+aws ecs register-task-definition --cli-input-json file://task-def.json
+aws ecs list-task-definitions
+aws ecs create-service --cluster MyCluster --service-name MyService \
+--task-definition my-task:1 --desired-count 2 \
+--launch-type FARGATE \
+--network-configuration "awsvpcConfiguration={subnets=[subnet-12345],securityGroups=[sg-67890],assignPublicIp=ENABLED}"
+aws ecs update-service --cluster MyCluster --service-name MyService --force-new-deployment
+aws ecs update-service --cluster MyCluster --service-name MyService --desired-count 5
