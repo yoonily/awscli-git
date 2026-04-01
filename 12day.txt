@@ -1,9 +1,71 @@
-aws ecs list-clusters
-aws ecs register-task-definition --cli-input-json file://task-def.json
-aws ecs list-task-definitions
-aws ecs create-service --cluster MyCluster --service-name MyService \
---task-definition my-task:1 --desired-count 2 \
---launch-type FARGATE \
---network-configuration "awsvpcConfiguration={subnets=[subnet-12345],securityGroups=[sg-67890],assignPublicIp=ENABLED}"
-aws ecs update-service --cluster MyCluster --service-name MyService --force-new-deployment
-aws ecs update-service --cluster MyCluster --service-name MyService --desired-count 5
+aws 최신도구
+ai와 결합 운영효율
+vcf, ecs등 복잡한 인프라 관리
+자가 치유 인프라와 지능형 애플리케이션 분석 구축 전략
+
+최근 1시간 동안 에러 로그가 가장 많으느 상위 5개 ip를 보여줘 자연어로 로그 분석
+메트릭, 로그, 이벤트를 ai가 분석하여 운영 이상 징후를 감지, 구체적 조치 방법 제안
+
+amazon q를 활용한 운영 지능화
+- 관련 로그와 추적 데이터를 분석하여 원인 설명
+- 코드 최적화 및 업그레이드 애플리케이션의 성능 병목을 관측 데이터 기반으로 파악하고
+  직접 최적화된 코드를 제안
+
+task definition json 작성(Sidecar 구성)
+task-definition.json
+{
+  "family": "my-fargate-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "taskRoleArn": "arn:aws:iam::123456789012:role/MyEcsTaskRole",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "app-container",
+      "image": "my-app-image:latest",
+      "essential": true,
+      "environment": [
+        { "name": "AWS_XRAY_DAEMON_ADDRESS", "value": "127.0.0.1:2000" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/my-app",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "app"
+        }
+      }
+    },
+    {
+      "name": "xray-daemon",
+      "image": "public.ecr.aws/xray/aws-xray-daemon:latest",
+      "essential": true,
+      "cpu": 32,
+      "memory": 256,
+      "portMappings": [
+        { "containerPort": 2000, "protocol": "udp" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/my-app",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "xray"
+        }
+      }
+    }
+  ]
+}
+작업 정의 등록
+aws ecs register-task-definition --cli-input-json file://task-definition.json
+서비스 업데이트
+aws ecs update-service \
+--cluster MyCluster \
+--service MyService \
+--task-definition my-fargate-app \
+--force-new-deployment
+
+AICC/AI 서빙 환경 최적화
+X-Ray 트레이스 맵
