@@ -1,0 +1,152 @@
+aws aiops 자동화 워크플로우
+탐지 분석 대응
+Amazone DevOps Guru(이상 징후 감지)
+AWS Systems Manager(실제 조치 수행)
+AI역할
+1단계:지능형 탐지(Amazone DevOps Guru)
+과거 데이터를 학습하여 단순 임계치가 아닌, 평소보다 DB 커넥션이 비정상적으로 급증함과 같은 컨텍스트를 파악
+2단계:이벤트 라우팅(Amazon EventBridge)
+이상 징후가 감지되면 Insight이벤트를 발행 특정 심각도 이상의 이벤트만 필터링하여 다음 단계로 진행
+3단계:생성형 AI 기반 분석(Amazone Bedrock, Claude3)
+로그 요약 및 근본 원인 추론 기존에 정의된 SOP(표준 운영 절차)와 비교하여 최적의 복구 스크립트 제안
+4단계:자동 조치 및 알림(SSM Document, Slack, Microsoft Teams)
+ECS 특정 서비스의 메모리 누수 감지 시 Service Restart, Scale Out, 락 경함 발생 시 특정 세션 강제 종료
+분석 결과와 조치 사항을 즉시 전송
+
+EventBridge가 DevOps Guru의 통찰을 받아 Lambda를 실행하도록 연결하는 핵심 코드
+
+# 1. DevOps Guru 이벤트용 EventBridge Rule
+resource "aws_cloudwatch_event_rule" "devops_guru_insights" {
+name = "devops-guru-insights-rule"
+description = "Capture Insights from Amazone DevOps Guru"
+event_pattern = jsonencode({
+"source": ["aws.devops-guru"],
+"detail-type": ["DevOps Guru New Insight"]
+})
+}
+
+# 2. Lambda 타켓 설정 (자동 조치용)
+resource "aws_cloudwatch_event_target" "remediation_lambda" {
+rule = aws_cloudwatch_event_rule.devops_guru_insights.name
+target_id = "SendToRemediationLambda"
+arn = aws_lambda_function.ai_analyser.arn
+}
+
+자동화된 조치 전문가로서 보안 장치 권장
+1. 승인 프로세스
+slack에서 승인 버튼을 눌러야 Lambda가 실행되도록 설계
+2. 최소 권한
+Lambda에 AdministratorAccess를 주지 말고, 특정 ECS 서비스나 RDS 세션만 관리할 수 있는 IAM Role 부여
+3. 멱등성 보장
+자동 조치 스크립트가 여러 번 실행되어도 시스템에 무리가 가지 않도록 설계
+
+특정 장애 상황 PostgreSQL CPU 100% 자동으로 실행될 Lambda함수 코드 예시
+워크플로우 자동화 Python(Boto3 + Psycopg2)기반 Lambda 함수
+CloudWatch Alarm: RDS CPUUtilization 메트릭 90% 알람 발생
+EventBridge: 해당 알람 상태가 ALARM으로 변할 때 위의 Lambda 함수를 트리거
+SNS/Slack Notification: Lambda 실행 결과를 엔지니에게 즉시 전송
+
+Terraform 알림, 틀리거, 조치 파이프라인 구축 코드셋 구성
+CloudWatch Alarm -> EventBridge -> Lambda로 이어지는 표준 AIOps 워크플로우 생성
+1. Terraform 프로젝트 구조
+인증과 리소스 분리
+provider.tf(AWS 프로바이더 및 인증 설정)
+iam.tf(Lambda 실행 및 DB 접근 권한)
+lambda.tf(자동 조치 로직 및 리소스 정의)
+monitoring.tf(CloudWatch 알람 및 EventBridge 트리거)
+1. IAM 설정(iam.tf)
+resource "aws_iam_role" "lambda_at_role" {
+name = "PostgresAutoscaleRemediationRole"
+assume_role_policy = jsonencode({
+Version = "2012-10-17"
+Statement = [{
+Action = "sts:AssumeRole"
+Effect = "Allow"
+Principal = { Service = "lambda.amazonaws.com" }
+}]
+}]
+}
+# 기본 실행 권한 및 vpc 접근 권한 연결
+resource "aws_iam_role_policy_attachment" "lambda_basic" {
+role = aws_iam_role.lambda_at_role.name
+policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+# X-Ray 추적 권한(Observability 강화)
+resource "aws_ima_role_policy_attachment" "lambda_xray" {
+role = aws_iam_role.lambda_at_role.name
+policy_arn = "arn:aws:ima::aws:policy/AWSXRayDaemonWriteAccess"
+}
+2. 모니터링 및 트리거 설정(monitoring.tf)
+RDS CPU가 90% 이상일 때 알람은 울리고 이를 EventBridge로 연결
+# 1, CloudWatch 알람(RDS CPU 90% 이상)
+resource "aws_cloudwatch_metric_alarm" "rds_cpu_high" {
+alarm_name = "rds-high-cpu-alarm"
+comparision_operator = "GreaterThanOrEqualToThreshold"
+evaluation_periods = "1"
+metric_name = "CPUUtilizaion"
+namespace = "AWS/RDS"
+period = "60"
+statistic = "Average"
+threshold = "90"
+alarm_description = "This metric monitors rds cpu utilization"
+dimensions = {
+DBInstanceIdentifier = "your-db-instance-id"
+}
+}
+# 2. EventBridge Rule(알람 상태 변화 감지)
+resource "aws_cloudwatch_event_rule" "cpu_alarm_rule" {
+name = "rds-cpu-remediation-rule"
+description = "Trigger Lambda when RDS CPU alarm is triggered"
+event_pattern = jsonencode({
+"source": ["aws.cloudwatch"],
+"detail-type": ["CloudWatch Alarm State Change"],
+"detail": {
+"alarmName": ["rds-high-cpu-alarm"],
+"sate": { "value": ["ALARM"] }
+}
+})
+}
+# 3. EventBridge -> Lambda 타겟 연결
+reousrce "aws_cloudwatch_event_target" "lambda_target" {
+rule = aws_cloudwatch_event_rule.cpu_alarm_rule.name
+target_id = "SendToPostgresRemediation"
+arn = aws_lambda_function.remediation_lambda.arn
+}
+
+3. Lambda 리소스 설정(lambda.tf)
+작성된 Python 코드를 업로드하고 vpc 내에 배치
+resource "aws_lambda_fuction" "remediation_lambda" {
+filename = "lambda_function.zip"
+function_name = "pg_cpu_remediation"
+fole = aws_iam_role.lambda_at_role.arn
+handler = "lambda_function.lambda_handler"
+runtime = "python3.11"
+timeout = 30
+# DB 접근을 위한 vpc설정(subnet, security group)
+vpc_config {
+subnet_ids = ["subnet-xxx", "subnet-yyy"]
+security_group_ids = ["sg-zzzz"]
+}
+environment {
+variables = {
+DB_HOST = "your-db-endpoing"
+DB_NAME = "postgres"
+DB_USER = "admin"
+DB_PASS = "password"
+}
+}
+tracing_config {
+mode = "Active"
+}
+}
+# EventBridge가 Lambda를 실행할 수 있는 권한 허용
+resource "aws_lambda_permission" "allow_eventbridge" {
+statement_id = "AllowExecutionFromEventBridge"
+action = "lambda:InvokeFunction"
+function_name = aws_lambda_function.remediation_lambda.function_name
+principal = "event.amazonaws.com"
+source_arn = aws_cloudwatch_event_rule.cpu_alarm_rule.arn
+}
+
+
+
