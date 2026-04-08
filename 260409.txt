@@ -1,0 +1,85 @@
+-완전 관리형 ai서비스
+Amazon Bedrock: Claude, Llama3, Mistral등 다양한 파운데이션 모델(FM)을 API 하나로 호출하여 생성형 AI앱 구축
+Rekognition: 이미지 및 비디오 분석(겍체 탐지, 얼굴 인식)
+Polly & Transcribe: 텍스트-음성 변환 및 음성-텍스트 변환
+Lex: 챗봇 구축
+Comprehend: 자연어 처리(NLP)를 통한 텍스트 분석 및 감성 추출
+
+-머신러닝 플랫폼
+모델 빌드, 학습, 배포 전 과정을 관리할 수 있는 도구
+sageMaker Notebooks: 데이터 분석 및 코드 작성을 위한 Jypyter기반 환경
+SageMaker Traning Jobs: 분산 학습 환경을 자동으로 구서앟여 고성능 GPU 리소스를 효율적 사용
+SageMaker Endpoints: 학습된 모델을 실시간 추론이 가능한 API 형태로 배포
+SageMaker JumpStart: 오픈 소스 모델(BERT, ResNet)이나 상용 모델을 클릭 몇 번으로 즉시 배포하고 파인튜닝할 수 있는 허브
+
+-ML 인프라 및 프레임워크
+모델 아키텍처부터 직접 설계하는 전문가들을 위한 가상머신 및 전용 칩셋 환경
+Deep Learning AMIs(DLAMI): PyTorch, TensorFlow가 사전 설치된 EC2 이미지
+AWS Trainium & Inferentia: AWS가 자체 개발한 ML 전용 칩셋으로, 엔비디아 GPU 대비 비용 효율적인 학습 및 추론 성능을 제공
+GPU인스턴스(P4/P5): NVDIA H100 등을 탑재한 고성능 연산 리소스
+
+1. SageMaker 인프라 구성(Terraform)
+노트북 인스턴스와 이를 위한 보안 그룹, iam 역할 생성
+# 1. SageMaker 실행을 위한 IAM Role
+resource "aws_iam_role" "sagemaker_role" {
+  name = "sagemaker-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "sagemaker.amazonaws.com" }
+    }]
+  })
+}
+
+# SageMaker 기본 권한 및 Bedrock 접근 권한 추가 (GenAI 활용 대비)
+resource "aws_iam_role_policy_attachment" "sagemaker_full_access" {
+  role       = aws_iam_role.sagemaker_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "bedrock_access" {
+  role       = aws_iam_role.sagemaker_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
+}
+
+# 2. SageMaker 노트북 인스턴스 생성
+resource "aws_sagemaker_notebook_instance" "ml_notebook" {
+  name          = "ai-dev-notebook"
+  role_arn      = aws_iam_role.sagemaker_role.arn
+  instance_type = "ml.t3.medium" # 학습 시에는 p3, g4dn 등으로 변경
+
+  # 보안 강화를 위한 VPC 설정 (선택 사항)
+  # subnet_id          = "subnet-xxxxxx"
+  # security_group_ids = ["sg-xxxxxx"]
+
+  tags = {
+    Name = "ML-Development-Environment"
+  }
+}
+
+2. Bedrock 기반 RAG 시스템 구성을 위한 권한 배포
+PostgreSQL(AgensSQL) 벡터 데이터베이스 사용 생성형 AI 시스템 구축 Bedrock 호출 권
+# Bedrock 호출을 위한 전용 IAM Policy
+resource "aws_iam_policy" "bedrock_invoke" {
+  name        = "BedrockInvocationPolicy"
+  description = "Policy to allow invoking Bedrock models"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "bedrock:InvokeModel"
+        Effect   = "Allow"
+        Resource = "arn:aws:bedrock:ap-northeast-2::foundation-model/*"
+      }
+    ]
+  })
+}
+
+3. 배포 및 운영 전략(MLOps Tweak)
+비용 최적화 
+데이터 보안
+컴퓨팅 리소스 트윅
